@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collaborative Editor - Real-time Document Editing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        /* Login Screen */
+        #loginScreen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .login-box h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .login-box p {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .login-box input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            transition: border 0.3s;
+        }
+
+        .login-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .login-box button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .login-box button:hover {
+            transform: translateY(-2px);
+        }
+
+        .login-box button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Editor Screen */
+        #editorScreen {
+            display: none;
+            min-height: 100vh;
+            background: #f5f5f5;
+        }
+
+        #editorScreen.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #333;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #4caf50;
+        }
+
+        .status-dot.disconnected {
+            background: #f44336;
+        }
+
+        /* Main Container */
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: white;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid #e0e0e0;
+        }
+
+        .sidebar h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .user-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .user-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .user-name {
+            flex: 1;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .user-status {
+            font-size: 12px;
+            color: #4caf50;
+        }
+
+        /* Editor Area */
+        .editor-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .toolbar {
+            background: white;
+            padding: 15px;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            gap: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .toolbar button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .toolbar button:hover {
+            background: #764ba2;
+        }
+
+        #editor {
+            flex: 1;
+            padding: 20px;
+            border: none;
+            border-radius: 0 0 10px 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            line-height: 1.6;
+            resize: none;
+            background: white;
+        }
+
+        #editor:focus {
+            outline: none;
+        }
+
+        /* Stats */
+        .stats {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 200px;
+            }
+            
+            .main-container {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen">
+        <div class="login-box">
+            <h1>🚀 Collaborative Editor</h1>
+            <p>Real-time document editing with your team</p>
+            <input 
+                type="text" 
+                id="usernameInput" 
+                placeholder="Enter your name..."
+                maxlength="20"
+            >
+            <button id="joinBtn">Join Session</button>
+        </div>
+    </div>
+
+    <!-- Editor Screen -->
+    <div id="editorScreen">
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <h1>📝 Collaborative Editor</h1>
+                <div class="connection-status">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span id="statusText">Connected</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Container -->
+        <div class="main-container">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <h2>👥 Active Users (<span id="userCount">0</span>)</h2>
+                <div id="usersList"></div>
+            </div>
+
+            <!-- Editor Area -->
+            <div class="editor-area">
+                <div class="toolbar">
+                    <button id="copyBtn">📋 Copy</button>
+                    <button id="downloadBtn">💾 Download</button>
+                    <button id="clearBtn">🗑️ Clear</button>
+                </div>
+                <textarea 
+                    id="editor" 
+                    placeholder="Start typing here... Your changes will sync in real-time!"
+                ></textarea>
+                <div class="stats">
+                    <div>
+                        Characters: <strong id="charCount">0</strong> | 
+                        Words: <strong id="wordCount">0</strong> | 
+                        Lines: <strong id="lineCount">1</strong>
+                    </div>
+                    <div id="lastUpdate">Last updated: just now</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Socket.IO Client -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+    
+    <script>
+        let socket;
+        let username = '';
+        let isUpdating = false;
+
+        // DOM Elements
+        const loginScreen = document.getElementById('loginScreen');
+        const editorScreen = document.getElementById('editorScreen');
+        const usernameInput = document.getElementById('usernameInput');
+        const joinBtn = document.getElementById('joinBtn');
+        const editor = document.getElementById('editor');
+        const usersList = document.getElementById('usersList');
+        const userCount = document.getElementById('userCount');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const charCount = document.getElementById('charCount');
+        const wordCount = document.getElementById('wordCount');
+        const lineCount = document.getElementById('lineCount');
+        const copyBtn = document.getElementById('copyBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const clearBtn = document.getElementById('clearBtn');
+
+        // Join session
+        joinBtn.addEventListener('click', joinSession);
+        usernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') joinSession();
+        });
+
+        function joinSession() {
+            username = usernameInput.value.trim();
+            if (!username) {
+                alert('Please enter your name');
+                return;
+            }
+
+            // Connect to server
+            socket = io('http://localhost:3000');
+
+            socket.on('connect', () => {
+                console.log('Connected to server');
+                socket.emit('user-join', username);
+                loginScreen.style.display = 'none';
+                editorScreen.classList.add('active');
+                updateConnectionStatus(true);
+            });
+
+            socket.on('init', (data) => {
+                editor.value = data.content;
+                updateUsers(data.users);
+                updateStats();
+            });
+
+            socket.on('content-update', (data) => {
+                isUpdating = true;
+                editor.value = data.content;
+                updateStats();
+                isUpdating = false;
+            });
+
+            socket.on('user-joined', (user) => {
+                console.log('User joined:', user.name);
+            });
+
+            socket.on('users-update', (users) => {
+                updateUsers(users);
+            });
+
+            socket.on('user-left', (data) => {
+                console.log('User left:', data.username);
+            });
+
+            socket.on('disconnect', () => {
+                updateConnectionStatus(false);
+            });
+        }
+
+        // Editor events
+        editor.addEventListener('input', () => {
+            if (!isUpdating) {
+                socket.emit('content-change', {
+                    content: editor.value
+                });
+                updateStats();
+            }
+        });
+
+        // Update users list
+        function updateUsers(users) {
+            userCount.textContent = users.length;
+            usersList.innerHTML = users.map(user => `
+                <div class="user-item">
+                    <div class="user-color" style="background: ${user.color}"></div>
+                    <div class="user-name">${user.name}</div>
+                    <div class="user-status">● Active</div>
+                </div>
+            `).join('');
+        }
+
+        // Update stats
+        function updateStats() {
+            const text = editor.value;
+            charCount.textContent = text.length;
+            wordCount.textContent = text.trim() ? text.trim().split(/\s+/).length : 0;
+            lineCount.textContent = text.split('\n').length;
+        }
+
+        // Connection status
+        function updateConnectionStatus(connected) {
+            if (connected) {
+                statusDot.classList.remove('disconnected');
+                statusText.textContent = 'Connected';
+            } else {
+                statusDot.classList.add('disconnected');
+                statusText.textContent = 'Disconnected';
+            }
+        }
+
+        // Toolbar actions
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(editor.value);
+            alert('Content copied to clipboard!');
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            const blob = new Blob([editor.value], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'document.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        clearBtn.addEventListener('click', () => {
+            if (confirm('Clear all content?')) {
+                editor.value = '';
+                socket.emit('content-change', { content: '' });
+                updateStats();
+            }
+        });
+    </script>
+</body>
+</html>
